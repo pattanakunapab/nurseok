@@ -37,7 +37,7 @@
 
         window.loginWithGoogle = () => {
             signInWithPopup(auth, provider)
-                .then((result) => { }).catch((error) => {
+                .catch((error) => {
                     console.error("Login Error:", error);
                     alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
                 });
@@ -62,6 +62,7 @@
                 currentState.userId = email;
                 currentState.photoURL = user.photoURL;
                 
+                // Default info
                 currentState.realName = name; 
                 currentState.studentId = '';
 
@@ -93,10 +94,17 @@
             theme: {
                 extend: {
                     colors: {
-                        coffee: {
-                            50: '#fdfbf7', 100: '#f7f3e8', 200: '#efe6d0', 300: '#e3d2ad',
-                            400: '#d2b482', 500: '#c2965e', 600: '#a67846', 700: '#8c5f3a',
-                            800: '#754e35', 900: '#614030',
+                        nursing: {
+                            50: '#f0f9ff',  // Very Light Blue
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9', // Sky Blue
+                            600: '#0284c7', // Primary Blue
+                            700: '#0369a1', // Navy
+                            800: '#075985', // Dark Navy
+                            900: '#0c4a6e', // Deep Navy
                         }
                     },
                     fontFamily: {
@@ -110,21 +118,40 @@
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
-            background-color: #fdfbf7;
-            background-image: radial-gradient(#e3d2ad 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-color: #f8fafc;
+            /* Subtle grid pattern */
+            background-image: linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+            background-size: 40px 40px;
         }
-        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .coffee-shadow { box-shadow: 0 10px 25px -5px rgba(117, 78, 53, 0.15), 0 8px 10px -6px rgba(117, 78, 53, 0.1); }
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .nursing-shadow { 
+            box-shadow: 0 4px 6px -1px rgba(12, 74, 110, 0.1), 0 2px 4px -1px rgba(12, 74, 110, 0.06); 
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        
         .loader {
-            border: 4px solid #f3f3f3; border-top: 4px solid #8c5f3a;
-            border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;
+            width: 48px;
+            height: 48px;
+            border: 5px solid #e0f2fe;
+            border-bottom-color: #0369a1;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="text-stone-800 antialiased">
+<body class="text-slate-800 antialiased">
 
     <div id="app" class="min-h-screen flex flex-col items-center justify-center p-4"></div>
 
@@ -134,7 +161,7 @@
         // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxvwe9U49mrbwwWXOdNBlTbxQ_RMhwl0Fg3uEeu60vU-04LoI7JLgW2iQDWt5MSgv33/exec"; 
         
-        const ENABLE_POSTTEST = true;
+        const ENABLE_POSTTEST = false;
         const ENABLE_SHOW_ANSWER = true;
         const ENABLE_RETAKE = true;
 
@@ -150,10 +177,7 @@
             realName: '',
             studentId: '',
 
-            // เก็บคำถามที่ดึงมาจากชีต
             currentExamData: [],
-            
-            // เก็บคำถามไว้ใน cache เพื่อไม่ต้องโหลดใหม่ทุกครั้ง (ถ้าต้องการ)
             pretestQuestions: null,
             posttestQuestions: null,
 
@@ -163,6 +187,7 @@
             isLoading: false
         };
 
+        // --- API Functions ---
         async function checkUserStatus(email) {
             if (!GAS_URL) return null;
             try {
@@ -209,35 +234,40 @@
             }
         }
 
+        // --- Render Functions ---
+
         function renderLoading(message = "กำลังโหลดข้อมูล...") {
             app.innerHTML = `
                 <div class="flex flex-col items-center justify-center fade-in">
-                    <div class="loader mb-4 border-coffee-600"></div>
-                    <p class="text-coffee-700 font-medium animate-pulse">${message}</p>
+                    <span class="loader mb-6"></span>
+                    <p class="text-nursing-800 font-semibold text-lg animate-pulse">${message}</p>
                 </div>
             `;
         }
 
         function renderLogin() {
             app.innerHTML = `
-                <div class="bg-white/80 backdrop-blur-md rounded-3xl coffee-shadow p-8 w-full max-w-md fade-in border-t-8 border-coffee-600">
+                <div class="glass-panel rounded-2xl nursing-shadow p-10 w-full max-w-md fade-in border-t-8 border-nursing-700">
                     <div class="text-center mb-8">
-                        <div class="bg-coffee-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-coffee-200 shadow-inner">
-                            <i data-lucide="coffee" class="w-10 h-10 text-coffee-700"></i>
+                        <div class="flex justify-center mb-6">
+                            <img src="https://www.kcn.ac.th/storage/app/media/images/logo/logo_kcn.png" 
+                                 alt="KCN Logo" 
+                                 class="h-28 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300">
                         </div>
-                        <h1 class="text-2xl font-bold text-coffee-800 tracking-wide">เข้าสู่ระบบ</h1>
-                        <p class="text-coffee-500 mt-2 font-light">แบบทดสอบรายวิชาการพยาบาลผู้สูงอายุ</p>
+                        <h1 class="text-2xl font-bold text-nursing-900 tracking-tight">เข้าสู่ระบบสอบ</h1>
+                        <p class="text-slate-500 mt-2 font-medium">รายวิชาการพยาบาลผู้สูงอายุ</p>
                     </div>
                     
                     <button onclick="loginWithGoogle()" 
-                        class="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-3">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google">
-                        Sign in with Google
+                        class="w-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-bold py-3.5 rounded-lg transition-all shadow-sm flex items-center justify-center gap-3">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                        ลงชื่อเข้าใช้ด้วย Google
                     </button>
                     
-                    <p class="text-xs text-center text-gray-400 mt-6">
-                        ระบบจะใช้อีเมลของคุณในการบันทึกคะแนน
-                    </p>
+                    <div class="mt-8 flex items-center justify-center gap-2 text-xs text-slate-400">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        <span>ระบบยืนยันตัวตนปลอดภัย</span>
+                    </div>
                 </div>
             `;
             lucide.createIcons();
@@ -245,31 +275,32 @@
 
         function renderRegister() {
             app.innerHTML = `
-                <div class="bg-white/80 backdrop-blur-md rounded-3xl coffee-shadow p-8 w-full max-w-md fade-in border-t-8 border-coffee-600">
-                    <div class="text-center mb-6">
-                        <h2 class="text-xl font-bold text-coffee-800">ลงทะเบียนข้อมูล</h2>
-                        <p class="text-coffee-500 text-sm">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อใช้ในการตรวจคะแนน</p>
+                <div class="glass-panel rounded-2xl nursing-shadow p-8 w-full max-w-md fade-in border-t-8 border-nursing-700">
+                    <div class="text-center mb-8 border-b border-slate-200 pb-4">
+                        <h2 class="text-xl font-bold text-nursing-900">ลงทะเบียนข้อมูลผู้สอบ</h2>
+                        <p class="text-slate-500 text-sm mt-1">กรุณาระบุข้อมูลจริงเพื่อการบันทึกผลคะแนน</p>
                     </div>
-                    <form id="registerForm" class="space-y-4">
+                    <form id="registerForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-semibold text-coffee-700 mb-1">ชื่อ-นามสกุล (ภาษาไทย)</label>
+                            <label class="block text-sm font-bold text-nursing-800 mb-2">ชื่อ-นามสกุล (ภาษาไทย)</label>
                             <input type="text" id="realNameInput" required value="${currentState.realName}" 
-                                class="w-full px-4 py-2 border border-coffee-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:outline-none" 
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-nursing-500 focus:border-nursing-500 focus:outline-none transition" 
                                 placeholder="เช่น นางสาวใจดี มีสุข">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-coffee-700 mb-1">รหัสนักศึกษา</label>
+                            <label class="block text-sm font-bold text-nursing-800 mb-2">รหัสนักศึกษา</label>
                             <input type="text" id="studentIdInput" required value="${currentState.studentId}"
-                                class="w-full px-4 py-2 border border-coffee-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:outline-none" 
-                                placeholder="เช่น 641234567">
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-nursing-500 focus:border-nursing-500 focus:outline-none transition" 
+                                placeholder="ระบุรหัสนักศึกษา">
                         </div>
                         <button type="submit" 
-                            class="w-full bg-coffee-600 hover:bg-coffee-700 text-white font-bold py-3 rounded-xl transition-all shadow-md mt-4">
-                            บันทึกและเข้าสู่ระบบ
+                            class="w-full bg-nursing-700 hover:bg-nursing-800 text-white font-bold py-3.5 rounded-lg transition-all shadow-md mt-4 flex justify-center items-center gap-2">
+                            บันทึกข้อมูล <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </form>
                 </div>
             `;
+            lucide.createIcons();
             
             document.getElementById('registerForm').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -280,7 +311,6 @@
                     alert('กรุณากรอกข้อมูลให้ครบถ้วน');
                     return;
                 }
-                
                 currentState.view = 'menu';
                 renderApp();
             });
@@ -288,97 +318,107 @@
 
         function renderMenu() {
             const profileImg = currentState.photoURL 
-                ? `<img src="${currentState.photoURL}" class="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-white/30 shadow-lg object-cover">`
-                : `<div class="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30 shadow-lg"><span class="text-3xl">👵</span></div>`;
+                ? `<img src="${currentState.photoURL}" class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-white shadow-md object-cover">`
+                : `<div class="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border-2 border-white/50 shadow-lg"><i data-lucide="user" class="w-10 h-10 text-white"></i></div>`;
 
+            // --- Pretest Block ---
             let pretestHtml = '';
             const pre = currentState.pretestData;
             
             if (pre.isDone) {
                 let btns = '';
                 if (ENABLE_SHOW_ANSWER) {
-                    btns += `<button onclick="reviewQuiz('pretest')" class="text-xs bg-white border border-coffee-300 text-coffee-700 px-3 py-2 rounded-lg hover:bg-coffee-50 flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
+                    btns += `<button onclick="reviewQuiz('pretest')" class="text-xs bg-white border border-slate-200 text-nursing-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1 transition"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
                 }
                 if (ENABLE_RETAKE) {
-                    btns += `<button onclick="startQuiz('pretest')" class="text-xs bg-coffee-100 text-coffee-800 px-3 py-2 rounded-lg hover:bg-coffee-200 flex items-center gap-1"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> ทำใหม่</button>`;
+                    btns += `<button onclick="startQuiz('pretest')" class="text-xs bg-nursing-50 text-nursing-700 border border-nursing-200 px-3 py-2 rounded shadow-sm hover:bg-nursing-100 flex items-center gap-1 transition"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> สอบแก้ตัว</button>`;
                 }
 
                 pretestHtml = `
-                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-left">
-                        <div class="flex justify-between items-start mb-2">
+                    <div class="bg-white border-l-4 border-green-500 rounded-r-lg shadow-sm p-5 mb-4 relative overflow-hidden">
+                        <div class="flex justify-between items-start">
                             <div>
-                                <h4 class="font-bold text-green-800">Pre-test (ก่อนเรียน)</h4>
-                                <span class="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">เรียบร้อยแล้ว</span>
+                                <h4 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                    Pre-test <span class="text-xs font-normal text-slate-500">(ก่อนเรียน)</span>
+                                </h4>
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded mt-1">
+                                    <i data-lucide="check-circle" class="w-3 h-3"></i> ดำเนินการแล้ว
+                                </span>
                             </div>
                             <div class="text-right">
-                                <span class="text-2xl font-bold text-green-700">${pre.score}</span>
-                                <span class="text-xs text-green-600">คะแนน</span>
+                                <span class="text-3xl font-bold text-slate-800">${pre.score}</span>
+                                <span class="text-xs text-slate-500 block">คะแนนที่ได้</span>
                             </div>
                         </div>
-                        <div class="flex gap-2 mt-2">
+                        <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100">
                             ${btns}
                         </div>
                     </div>
                 `;
             } else {
                 pretestHtml = `
-                    <div class="bg-white border border-coffee-200 rounded-xl p-4 mb-4 text-left hover:shadow-md transition">
-                        <div class="flex justify-between items-center mb-3">
-                            <h4 class="font-bold text-coffee-800">Pre-test (ก่อนเรียน)</h4>
-                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ยังไม่ทำ</span>
+                    <div class="bg-white border-l-4 border-nursing-500 rounded-r-lg shadow-sm p-5 mb-4 hover:shadow-md transition duration-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-bold text-slate-800 text-lg">Pre-test <span class="text-xs font-normal text-slate-500">(ก่อนเรียน)</span></h4>
+                            <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">ยังไม่ได้สอบ</span>
                         </div>
-                        <button onclick="startQuiz('pretest')" class="w-full bg-coffee-600 hover:bg-coffee-700 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                        <button onclick="startQuiz('pretest')" class="w-full bg-nursing-600 hover:bg-nursing-700 text-white font-bold py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2">
                             <i data-lucide="play-circle" class="w-4 h-4"></i> เริ่มทำแบบทดสอบ
                         </button>
                     </div>
                 `;
             }
 
+            // --- Posttest Block ---
             let posttestHtml = '';
             const post = currentState.posttestData;
 
             if (!ENABLE_POSTTEST) {
                 posttestHtml = `
-                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left opacity-75">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-bold text-gray-500">Post-test (หลังเรียน)</h4>
-                            <i data-lucide="lock" class="w-4 h-4 text-gray-400"></i>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-5 text-left opacity-70 relative">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-500 text-lg">Post-test <span class="text-xs font-normal">(หลังเรียน)</span></h4>
+                            <i data-lucide="lock" class="w-5 h-5 text-slate-400"></i>
                         </div>
-                        <div class="text-xs text-gray-400">ยังไม่เปิดให้ทำแบบทดสอบนี้</div>
+                        <p class="text-xs text-slate-400 mt-2">ยังไม่เปิดให้ทำแบบทดสอบนี้</p>
                     </div>
                 `;
             } else {
                 if (post.isDone) {
                     let btns = '';
                     if (ENABLE_SHOW_ANSWER) {
-                        btns += `<button onclick="reviewQuiz('posttest')" class="text-xs bg-white border border-blue-300 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
+                        btns += `<button onclick="reviewQuiz('posttest')" class="text-xs bg-white border border-slate-200 text-nursing-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1 transition"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
                     }
 
                     posttestHtml = `
-                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
-                            <div class="flex justify-between items-start mb-2">
+                        <div class="bg-white border-l-4 border-blue-600 rounded-r-lg shadow-sm p-5 relative overflow-hidden">
+                            <div class="flex justify-between items-start">
                                 <div>
-                                    <h4 class="font-bold text-blue-800">Post-test (หลังเรียน)</h4>
-                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">เรียบร้อยแล้ว</span>
+                                    <h4 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                        Post-test <span class="text-xs font-normal text-slate-500">(หลังเรียน)</span>
+                                    </h4>
+                                    <span class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1">
+                                        <i data-lucide="check-circle" class="w-3 h-3"></i> ดำเนินการแล้ว
+                                    </span>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-2xl font-bold text-blue-700">${post.score}</span>
-                                    <span class="text-xs text-blue-600">คะแนน</span>
+                                    <span class="text-3xl font-bold text-slate-800">${post.score}</span>
+                                    <span class="text-xs text-slate-500 block">คะแนนที่ได้</span>
                                 </div>
                             </div>
-                            <div class="flex gap-2 mt-2">
+                            <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100">
                                 ${btns}
                             </div>
                         </div>
                     `;
                 } else {
                     posttestHtml = `
-                        <div class="bg-white border border-blue-200 rounded-xl p-4 text-left hover:shadow-md transition">
-                            <div class="flex justify-between items-center mb-3">
-                                <h4 class="font-bold text-blue-800">Post-test (หลังเรียน)</h4>
-                                <span class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">พร้อมใช้งาน</span>
+                        <div class="bg-white border-l-4 border-nursing-700 rounded-r-lg shadow-sm p-5 hover:shadow-md transition duration-200">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="font-bold text-slate-800 text-lg">Post-test <span class="text-xs font-normal text-slate-500">(หลังเรียน)</span></h4>
+                                <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">เปิดสอบแล้ว</span>
                             </div>
-                            <button onclick="startQuiz('posttest')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                            <button onclick="startQuiz('posttest')" class="w-full bg-nursing-800 hover:bg-nursing-900 text-white font-bold py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2">
                                 <i data-lucide="play-circle" class="w-4 h-4"></i> เริ่มทำแบบทดสอบ
                             </button>
                         </div>
@@ -388,22 +428,24 @@
 
             app.innerHTML = `
                 <div class="w-full max-w-md fade-in flex flex-col justify-center">
-                    <div class="bg-white/90 backdrop-blur rounded-3xl coffee-shadow overflow-hidden mb-6 border border-coffee-100">
-                        <div class="bg-gradient-to-br from-coffee-600 to-coffee-800 p-8 text-white text-center relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/coffee.png')]"></div>
+                    <div class="glass-panel rounded-2xl nursing-shadow overflow-hidden mb-6">
+                        <!-- Header Profile -->
+                        <div class="bg-gradient-to-r from-nursing-800 to-nursing-600 p-8 text-white text-center relative">
+                            <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/medical-icons.png')]"></div>
                             <div class="relative z-10">
                                 ${profileImg}
-                                <h2 class="text-2xl font-bold tracking-wide">ยินดีต้อนรับ</h2>
-                                <p class="text-coffee-100 mt-1 font-light mb-1">${currentState.realName || currentState.user}</p>
-                                <p class="text-coffee-200 text-xs font-light">ID: ${currentState.studentId || '-'}</p>
+                                <h2 class="text-xl font-bold tracking-wide">${currentState.realName || currentState.user}</h2>
+                                <p class="text-nursing-100 text-sm mt-1 font-light">รหัส: ${currentState.studentId || '-'}</p>
                             </div>
                         </div>
-                        <div class="p-6">
+                        
+                        <!-- Content -->
+                        <div class="p-6 bg-slate-50/50">
                              ${pretestHtml}
                              ${posttestHtml}
                         </div>
                     </div>
-                     <button onclick="logoutFirebase()" class="text-coffee-400 hover:text-coffee-600 text-sm font-medium transition flex items-center justify-center gap-1 mx-auto">
+                     <button onclick="logoutFirebase()" class="text-slate-400 hover:text-nursing-700 text-sm font-medium transition flex items-center justify-center gap-2 mx-auto py-2">
                         <i data-lucide="log-out" class="w-4 h-4"></i> ออกจากระบบ
                      </button>
                 </div>
@@ -412,11 +454,10 @@
         }
 
         function renderQuiz() {
-            // ใช้ currentExamData แทน examData
             const questions = currentState.currentExamData;
             
             if (!questions || questions.length === 0) {
-                app.innerHTML = `<div class="text-center p-8">ไม่พบข้อมูลข้อสอบ</div>`;
+                app.innerHTML = `<div class="text-center p-8 text-slate-500">กำลังโหลดข้อสอบหรือเกิดข้อผิดพลาด...</div>`;
                 return;
             }
 
@@ -430,100 +471,115 @@
                                  (currentState.quizType === 'posttest' && currentState.posttestData.isDone);
 
             const typeLabel = currentState.quizType === 'pretest' ? 'Pre-test' : 'Post-test';
-            const title = isReviewMode ? `เฉลย ${typeLabel}` : `แบบทดสอบ ${typeLabel}`;
+            const title = isReviewMode ? `เฉลย ${typeLabel}` : `ข้อสอบ ${typeLabel}`;
 
             let optionsHtml = '';
             question.options.forEach((opt, idx) => {
                 const isSelected = currentAnswer === idx;
                 const isCorrect = idx === question.correctAnswer;
-                let borderClass = 'border-white';
-                let bgClass = 'bg-coffee-50/50';
-                let icon = '';
+                
+                // Styles logic
+                let containerClass = "border-slate-200 bg-white hover:border-nursing-300 hover:bg-slate-50";
+                let circleClass = "border-slate-300 text-transparent";
+                let icon = "";
 
                 if (isReviewMode) {
+                    containerClass = "cursor-default border-slate-200 bg-white opacity-60"; // Default dimmed
+                    
                     if (isSelected) {
                         if (isCorrect) {
-                            borderClass = 'border-green-500'; bgClass = 'bg-green-100';
-                            icon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>';
+                            containerClass = "border-green-500 bg-green-50 opacity-100 ring-1 ring-green-500";
+                            circleClass = "border-green-500 bg-green-500 text-white";
+                            icon = `<i data-lucide="check-circle" class="w-5 h-5 text-green-600 ml-2"></i>`;
                         } else {
-                            borderClass = 'border-red-500'; bgClass = 'bg-red-100';
-                            icon = '<i data-lucide="x-circle" class="w-5 h-5 text-red-600"></i>';
+                            containerClass = "border-red-500 bg-red-50 opacity-100 ring-1 ring-red-500";
+                            circleClass = "border-red-500 bg-red-500 text-white";
+                            icon = `<i data-lucide="x-circle" class="w-5 h-5 text-red-600 ml-2"></i>`;
                         }
                     } else if (isCorrect) {
-                        borderClass = 'border-green-300'; bgClass = 'bg-green-50/50';
-                        icon = '<i data-lucide="check" class="w-4 h-4 text-green-400"></i>';
+                        containerClass = "border-green-500 bg-green-50 opacity-100";
+                        circleClass = "border-green-500 bg-green-500 text-white";
+                        icon = `<i data-lucide="check" class="w-5 h-5 text-green-600 ml-2"></i>`;
                     }
                 } else {
+                    // Normal Mode
                     if (isSelected) {
-                        borderClass = 'border-coffee-500'; bgClass = 'bg-coffee-100 text-coffee-900 shadow-inner';
-                    } else {
-                        borderClass = 'border-white hover:border-coffee-300 hover:bg-white hover:shadow-sm';
+                        containerClass = "border-nursing-600 bg-nursing-50 ring-1 ring-nursing-600 text-nursing-900 font-medium shadow-sm";
+                        circleClass = "border-nursing-600 bg-nursing-600 text-white";
                     }
                 }
 
                 optionsHtml += `
                     <button onclick="${isReviewMode ? '' : `selectAnswer(${idx})`}"
-                        class="w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center mb-3 group ${borderClass} ${bgClass} ${isReviewMode ? 'cursor-default' : ''}">
-                        <div class="w-7 h-7 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
-                            ${isSelected ? 'border-coffee-500 bg-coffee-500 text-white' : 'border-coffee-300 text-transparent group-hover:border-coffee-400'}">
-                            ${isSelected ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}
+                        class="w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-start mb-3 group ${containerClass}">
+                        <div class="w-6 h-6 rounded-full border mr-3 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${circleClass}">
+                            <i data-lucide="check" class="w-3 h-3"></i>
                         </div>
-                        <span class="text-coffee-800 font-medium leading-relaxed flex-grow">${opt}</span>
+                        <span class="text-sm md:text-base leading-relaxed flex-grow">${opt}</span>
                         ${icon}
                     </button>
                 `;
             });
 
             app.innerHTML = `
-                <div class="w-full max-w-3xl flex flex-col min-h-screen sm:min-h-0 sm:h-auto">
-                    <div class="flex justify-between items-center mb-6 bg-white/90 backdrop-blur p-5 rounded-2xl coffee-shadow border border-coffee-100">
-                        <h2 class="text-xl font-bold text-coffee-800 flex items-center gap-2">
-                            <i data-lucide="book-open" class="w-5 h-5 text-coffee-500"></i>
+                <div class="w-full max-w-3xl flex flex-col min-h-screen sm:min-h-0 sm:h-auto fade-in">
+                    <!-- Header Bar -->
+                    <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <h2 class="text-lg font-bold text-nursing-800 flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-nursing-600"></i>
                             ${title}
                         </h2>
-                        <span class="bg-coffee-100 text-coffee-800 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm border border-coffee-200">
-                            ข้อ ${currentState.currentQuestionIndex + 1} / ${questions.length}
+                        <span class="bg-nursing-100 text-nursing-800 px-3 py-1 rounded-full text-xs font-bold">
+                            ข้อที่ ${currentState.currentQuestionIndex + 1} / ${questions.length}
                         </span>
                     </div>
-                    <div class="w-full bg-coffee-200 rounded-full h-3 mb-8 shadow-inner overflow-hidden">
-                        <div class="bg-gradient-to-r from-coffee-500 to-coffee-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm" style="width: ${progress}%"></div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-6">
+                        <div class="bg-nursing-600 h-2.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                     </div>
-                    <div class="bg-white rounded-3xl coffee-shadow p-8 mb-8 flex-grow border border-white/50 relative">
-                         <div class="absolute top-0 right-0 p-4 opacity-5"><i data-lucide="coffee" class="w-24 h-24 text-coffee-900"></i></div>
-                        <h3 class="text-lg font-bold text-coffee-900 mb-8 leading-relaxed relative z-10">
-                            ${question.id}. ${question.question}
+
+                    <!-- Question Card -->
+                    <div class="bg-white rounded-2xl nursing-shadow p-6 md:p-8 mb-6 flex-grow border border-slate-100 relative overflow-hidden">
+                         <div class="absolute -top-6 -right-6 opacity-5 rotate-12">
+                            <i data-lucide="stethoscope" class="w-40 h-40 text-nursing-900"></i>
+                         </div>
+                        <h3 class="text-lg md:text-xl font-bold text-slate-800 mb-6 leading-relaxed relative z-10">
+                            ${currentState.currentQuestionIndex + 1}. ${question.question}
                         </h3>
                         <div class="space-y-3 relative z-10">${optionsHtml}</div>
                     </div>
-                    <div class="flex justify-between items-center mt-auto pt-4 pb-8 sm:pb-0">
+
+                    <!-- Controls -->
+                    <div class="flex justify-between items-center mt-auto pt-2 pb-8 sm:pb-0">
                          ${isReviewMode ? `
                              <button onclick="backToMenu()" 
-                                class="px-6 py-3 rounded-xl font-bold text-coffee-600 bg-white border border-coffee-200 hover:bg-coffee-50 transition shadow-sm">
+                                class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition shadow-sm text-sm">
                                 ออกจากหน้าเฉลย
                             </button>
                          ` : `
                              <button onclick="prevQuestion()" 
-                                class="px-6 py-3 rounded-xl font-bold transition flex items-center gap-2 
-                                ${currentState.currentQuestionIndex === 0 ? 'text-coffee-300 cursor-not-allowed' : 'text-coffee-700 bg-white hover:bg-coffee-50 shadow-md hover:shadow-lg border border-coffee-100'}"
+                                class="px-5 py-2.5 rounded-lg font-bold transition flex items-center gap-2 text-sm
+                                ${currentState.currentQuestionIndex === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 bg-white hover:bg-slate-50 border border-slate-300 shadow-sm'}"
                                 ${currentState.currentQuestionIndex === 0 ? 'disabled' : ''}>
-                                <i data-lucide="chevron-left" class="w-5 h-5"></i> ย้อนกลับ
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i> ย้อนกลับ
                             </button>
                          `}
                         <div class="flex gap-2">
                              ${currentState.currentQuestionIndex > 0 && isReviewMode ? `
-                                <button onclick="prevQuestion()" class="px-4 py-3 bg-white border border-coffee-200 rounded-xl hover:bg-coffee-50 text-coffee-700"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                                <button onclick="prevQuestion()" class="px-3 py-2.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
                              ` : ''}
                             ${isLastQuestion ? (isReviewMode ? '' : `
                                 <button onclick="submitQuiz()" id="submitBtn" ${!hasAnsweredCurrent ? 'disabled' : ''}
-                                    class="px-8 py-3 rounded-xl font-bold text-white transition-all shadow-lg flex items-center gap-2 
-                                    ${!hasAnsweredCurrent ? 'bg-coffee-300 cursor-not-allowed' : 'bg-coffee-600 hover:bg-coffee-700 transform hover:-translate-y-1'}">
+                                    class="px-6 py-2.5 rounded-lg font-bold text-white transition-all shadow-md flex items-center gap-2 text-sm
+                                    ${!hasAnsweredCurrent ? 'bg-slate-300 cursor-not-allowed' : 'bg-nursing-600 hover:bg-nursing-700 transform hover:-translate-y-0.5'}">
                                     ส่งคำตอบ <i data-lucide="send" class="w-4 h-4"></i>
                                 </button>
                             `) : `
                                 <button onclick="nextQuestion()" ${!hasAnsweredCurrent && !isReviewMode ? 'disabled' : ''}
-                                    class="px-8 py-3 rounded-xl font-bold text-white transition-all shadow-lg flex items-center gap-2 
-                                    ${(!hasAnsweredCurrent && !isReviewMode) ? 'bg-coffee-300 cursor-not-allowed' : 'bg-coffee-600 hover:bg-coffee-700 transform hover:-translate-y-1'}">
-                                    ${isReviewMode ? 'ข้อถัดไป' : 'ถัดไป'} <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                                    class="px-6 py-2.5 rounded-lg font-bold text-white transition-all shadow-md flex items-center gap-2 text-sm
+                                    ${(!hasAnsweredCurrent && !isReviewMode) ? 'bg-slate-300 cursor-not-allowed' : 'bg-nursing-600 hover:bg-nursing-700 transform hover:-translate-y-0.5'}">
+                                    ${isReviewMode ? 'ข้อถัดไป' : 'ถัดไป'} <i data-lucide="chevron-right" class="w-4 h-4"></i>
                                 </button>
                             `}
                         </div>
@@ -540,19 +596,22 @@
 
             app.innerHTML = `
                 <div class="w-full max-w-2xl fade-in text-center">
-                    <div class="bg-white rounded-3xl coffee-shadow p-10 mb-8 border-t-8 border-coffee-600">
-                        <div class="w-24 h-24 bg-coffee-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white">
-                            <i data-lucide="award" class="w-12 h-12 text-coffee-600"></i>
+                    <div class="glass-panel rounded-2xl nursing-shadow p-10 mb-8 border-t-8 border-nursing-600">
+                        <div class="w-24 h-24 bg-nursing-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-white">
+                            <i data-lucide="award" class="w-12 h-12 text-nursing-600"></i>
                         </div>
-                        <h2 class="text-3xl font-bold text-coffee-900 mb-2">บันทึกผล ${typeLabel} แล้ว!</h2>
-                        <p class="text-coffee-500 mb-8 font-light">ระบบบันทึกคะแนนของคุณเรียบร้อย</p>
-                        <div class="text-7xl font-bold text-coffee-600 mb-2 tracking-tight">${score}</div>
-                        <div class="text-coffee-400 font-bold text-sm uppercase tracking-widest mb-2">คะแนนรวม</div>
-                        <div class="text-coffee-300 text-sm">จากทั้งหมด ${total} ข้อ</div>
+                        <h2 class="text-2xl font-bold text-nursing-900 mb-2">บันทึกผลคะแนนเรียบร้อย</h2>
+                        <p class="text-slate-500 mb-8 font-medium">การสอบ ${typeLabel} ของคุณเสร็จสมบูรณ์</p>
+                        
+                        <div class="flex justify-center items-end gap-2 mb-2">
+                            <span class="text-7xl font-bold text-nursing-700 tracking-tighter leading-none">${score}</span>
+                            <span class="text-xl text-slate-400 font-medium mb-2">/ ${total}</span>
+                        </div>
+                        <div class="text-nursing-500 font-bold text-sm uppercase tracking-widest bg-nursing-50 inline-block px-4 py-1 rounded-full">คะแนนรวม</div>
                     </div>
-                    <div class="mt-10">
-                        <button onclick="backToMenu()" class="bg-white text-coffee-700 border-2 border-coffee-200 hover:border-coffee-400 hover:bg-coffee-50 px-10 py-3.5 rounded-xl font-bold shadow-lg transition-all transform hover:-translate-y-1">
-                            กลับสู่หน้าหลัก
+                    <div class="mt-8">
+                        <button onclick="backToMenu()" class="bg-white text-nursing-700 border border-nursing-200 hover:border-nursing-400 hover:bg-nursing-50 px-8 py-3 rounded-lg font-bold shadow-sm transition-all flex items-center justify-center gap-2 mx-auto">
+                            <i data-lucide="home" class="w-4 h-4"></i> กลับสู่หน้าหลัก
                         </button>
                     </div>
                 </div>
@@ -568,11 +627,9 @@
             else if (currentState.view === 'result') renderResult();
         }
 
-        // --- GLOBAL ACTIONS ---
+        // --- Global Actions ---
         window.startQuiz = async (type) => { 
             currentState.quizType = type;
-            
-            // Check cache or fetch new
             let questions = [];
             if(type === 'pretest' && currentState.pretestQuestions) {
                 questions = currentState.pretestQuestions;
@@ -581,7 +638,6 @@
             } else {
                 renderLoading(`กำลังโหลดข้อสอบ ${type === 'pretest' ? 'Pre-test' : 'Post-test'}...`);
                 questions = await fetchQuestions(type);
-                // Save to cache
                 if(type === 'pretest') currentState.pretestQuestions = questions;
                 else currentState.posttestQuestions = questions;
             }
@@ -606,8 +662,6 @@
 
         window.reviewQuiz = async (type) => { 
             currentState.quizType = type;
-            
-            // Need questions to review
             if(type === 'pretest' && !currentState.pretestQuestions) {
                  renderLoading('กำลังโหลดข้อมูล...');
                  currentState.pretestQuestions = await fetchQuestions(type);
@@ -636,37 +690,16 @@
             renderApp(); 
         };
 
-        window.selectAnswer = (i) => { 
-            currentState.answers[currentState.currentQuestionIndex] = i; 
-            renderQuiz(); 
-        };
-        
-        window.nextQuestion = () => { 
-            if(currentState.currentQuestionIndex < currentState.currentExamData.length - 1) { 
-                currentState.currentQuestionIndex++; 
-                renderQuiz(); 
-            } 
-        };
-        
-        window.prevQuestion = () => { 
-            if(currentState.currentQuestionIndex > 0) { 
-                currentState.currentQuestionIndex--; 
-                renderQuiz(); 
-            } 
-        };
-        
-        window.backToMenu = () => { 
-            currentState.view = 'menu'; 
-            renderApp(); 
-        };
+        window.selectAnswer = (i) => { currentState.answers[currentState.currentQuestionIndex] = i; renderQuiz(); };
+        window.nextQuestion = () => { if(currentState.currentQuestionIndex < currentState.currentExamData.length - 1) { currentState.currentQuestionIndex++; renderQuiz(); } };
+        window.prevQuestion = () => { if(currentState.currentQuestionIndex > 0) { currentState.currentQuestionIndex--; renderQuiz(); } };
+        window.backToMenu = () => { currentState.view = 'menu'; renderApp(); };
         
         window.submitQuiz = async () => {
             if(!confirm('ยืนยันการส่งคำตอบ?')) return;
-            
             const questions = currentState.currentExamData;
             let score = 0;
             questions.forEach((q, idx) => { if(currentState.answers[idx] === q.correctAnswer) score++; });
-            
             currentState.score = score;
             
             if (currentState.quizType === 'pretest') {
@@ -676,24 +709,17 @@
             }
 
             renderLoading('กำลังบันทึกคะแนนลงระบบ...');
-            
             await saveUserData({ 
-                user: currentState.user, 
-                userId: currentState.userId,
-                realName: currentState.realName,
-                studentId: currentState.studentId,
-                quizType: currentState.quizType,
-                score: score, 
-                total: questions.length, 
-                answers: currentState.answers 
+                user: currentState.user, userId: currentState.userId,
+                realName: currentState.realName, studentId: currentState.studentId,
+                quizType: currentState.quizType, score: score, 
+                total: questions.length, answers: currentState.answers 
             });
-            
             currentState.view = 'result';
             renderApp();
         };
 
         renderLogin();
-
     </script>
 </body>
 </html>
