@@ -20,7 +20,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         // ==========================================
-        //  CONFIG 1: ใส่ค่า Firebase Config ที่นี่ (สำคัญมาก!)
+        //  CONFIG 1: ใส่ค่า Firebase Config ที่นี่
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDQBM66YRLXmtFx7lynCBrL2qty9HNd57o",
@@ -31,16 +31,14 @@
             appId: "1:605737719385:web:5a08679d76f7bb23cdc348"
         };
 
-        // Initialize Firebase
         const appme = initializeApp(firebaseConfig);
         const auth = getAuth(appme);
         const provider = new GoogleAuthProvider();
 
-        // Make functions global for HTML onclick
         window.loginWithGoogle = () => {
             signInWithPopup(auth, provider)
                 .then((result) => {
-                    // Login Success handled by onAuthStateChanged
+                    // Handled by onAuthStateChanged
                 }).catch((error) => {
                     console.error("Login Error:", error);
                     alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
@@ -53,42 +51,44 @@
             });
         };
 
-        // Listen for auth state changes
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // User is signed in
                 const name = user.displayName;
                 const email = user.email;
                 
-                // Start Checking Process
                 renderLoading(`กำลังตรวจสอบประวัติของ ${name}...`);
                 
-                // เช็คประวัติจาก Google Sheets
                 const result = await checkUserStatus(email);
                 
                 currentState.user = name; 
                 currentState.userId = email;
                 currentState.photoURL = user.photoURL;
+                
+                // Set Default info for registration form
+                currentState.realName = name; 
+                currentState.studentId = '';
 
-                // Load Pretest Data
-                if (result && result.pretest && result.pretest.found) {
-                    currentState.pretestData = {
-                        isDone: true,
-                        score: result.pretest.score,
-                        answers: JSON.parse(result.pretest.answers || '{}')
-                    };
-                }
-
-                // Load Posttest Data
-                if (result && result.posttest && result.posttest.found) {
-                    currentState.posttestData = {
-                        isDone: true,
-                        score: result.posttest.score,
-                        answers: JSON.parse(result.posttest.answers || '{}')
-                    };
+                if (result) {
+                    if (result.pretest && result.pretest.found) {
+                        currentState.pretestData = {
+                            isDone: true,
+                            score: result.pretest.score,
+                            answers: JSON.parse(result.pretest.answers || '{}')
+                        };
+                    }
+                    if (result.posttest && result.posttest.found) {
+                        currentState.posttestData = {
+                            isDone: true,
+                            score: result.posttest.score,
+                            answers: JSON.parse(result.posttest.answers || '{}')
+                        };
+                    }
+                    // ถ้าเคยทำแล้ว อาจจะดึงชื่อเดิมมาแสดง (ถ้า Apps Script ส่งกลับมา)
+                    // ในที่นี้เราให้กรอกใหม่เพื่อความชัวร์ หรือใช้ค่าจาก Google ไปก่อน
                 }
                 
-                currentState.view = 'menu';
+                // เปลี่ยนไปหน้าลงทะเบียนข้อมูลก่อนเข้าเมนู
+                currentState.view = 'register';
                 renderApp();
             }
         });
@@ -140,10 +140,9 @@
         // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxvwe9U49mrbwwWXOdNBlTbxQ_RMhwl0Fg3uEeu60vU-04LoI7JLgW2iQDWt5MSgv33/exec"; 
         
-        // --- ตั้งค่าระบบ ---
-        const ENABLE_POSTTEST = false;    // true = เปิดให้ทำ Posttest, false = ปิด
-        const ENABLE_SHOW_ANSWER = true;  // ดูเฉลยหลังทำเสร็จ
-        const ENABLE_RETAKE = true;       // ทำซ้ำได้ (สำหรับ Pretest)
+        const ENABLE_POSTTEST = false;
+        const ENABLE_SHOW_ANSWER = true;
+        const ENABLE_RETAKE = true;
 
         const examData = [
             { id: 1, question: "ข้อใดกล่าวถึงการแบ่งกลุ่มผู้สูงอายุตาม Gerontologist ได้ถูกต้อง", options: ["the young old คือ ผู้ที่มีอายุ 55-65 ปี", "the old elderly คือ ผู้ที่มีอายุ 85 ปีขึ้นไป", "ผู้สูงอายุวัยต้น อายุ 61 ปีขึ้นไป", "ผู้สูงอายุวัยกลาง อายุ 75-79 ปี"], correctAnswer: 1 },
@@ -192,12 +191,15 @@
         
         let currentState = {
             view: 'login', user: '', userId: '', photoURL: '',
-            quizType: 'pretest', // 'pretest' or 'posttest'
+            quizType: 'pretest', 
             currentQuestionIndex: 0, 
             answers: {}, 
             score: 0, 
             
-            // เก็บสถานะแยกกัน
+            // เพิ่มตัวแปรสำหรับเก็บข้อมูลนักศึกษา
+            realName: '',
+            studentId: '',
+
             pretestData: { isDone: false, score: 0, answers: {} },
             posttestData: { isDone: false, score: 0, answers: {} },
             
@@ -207,7 +209,6 @@
         async function checkUserStatus(email) {
             if (!GAS_URL) return null;
             try {
-                // Fetch ไปที่ Google Script (ปรับเป็นส่ง email)
                 const response = await fetch(`${GAS_URL}?action=check&username=${encodeURIComponent(email)}`);
                 const data = await response.json();
                 return data;
@@ -221,8 +222,13 @@
             if (!GAS_URL) return;
             const formData = new FormData();
             formData.append('action', 'send');
-            formData.append('username', payload.userId); 
-            formData.append('quizType', payload.quizType); // ส่งประเภทข้อสอบไปด้วย
+            formData.append('username', payload.userId); // Email as ID
+            
+            // เพิ่มการส่งชื่อจริงและรหัสนักศึกษา
+            formData.append('realName', payload.realName);
+            formData.append('studentId', payload.studentId);
+            
+            formData.append('quizType', payload.quizType);
             formData.append('score', payload.score);
             formData.append('total', payload.total);
             formData.append('answers', JSON.stringify(payload.answers));
@@ -270,13 +276,56 @@
             lucide.createIcons();
         }
 
+        // หน้าลงทะเบียนข้อมูล
+        function renderRegister() {
+            app.innerHTML = `
+                <div class="bg-white/80 backdrop-blur-md rounded-3xl coffee-shadow p-8 w-full max-w-md fade-in border-t-8 border-coffee-600">
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl font-bold text-coffee-800">ลงทะเบียนข้อมูล</h2>
+                        <p class="text-coffee-500 text-sm">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อใช้ในการตรวจคะแนน</p>
+                    </div>
+                    <form id="registerForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-coffee-700 mb-1">ชื่อ-นามสกุล (ภาษาไทย)</label>
+                            <input type="text" id="realNameInput" required value="${currentState.realName}" 
+                                class="w-full px-4 py-2 border border-coffee-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:outline-none" 
+                                placeholder="เช่น นางสาวใจดี มีสุข">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-coffee-700 mb-1">รหัสนักศึกษา</label>
+                            <input type="text" id="studentIdInput" required value="${currentState.studentId}"
+                                class="w-full px-4 py-2 border border-coffee-300 rounded-lg focus:ring-2 focus:ring-coffee-500 focus:outline-none" 
+                                placeholder="เช่น 641234567">
+                        </div>
+                        <button type="submit" 
+                            class="w-full bg-coffee-600 hover:bg-coffee-700 text-white font-bold py-3 rounded-xl transition-all shadow-md mt-4">
+                            บันทึกและเข้าสู่ระบบ
+                        </button>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('registerForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                currentState.realName = document.getElementById('realNameInput').value.trim();
+                currentState.studentId = document.getElementById('studentIdInput').value.trim();
+                
+                if(!currentState.realName || !currentState.studentId) {
+                    alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                    return;
+                }
+                
+                currentState.view = 'menu';
+                renderApp();
+            });
+        }
+
         function renderMenu() {
             // Profile Image
             const profileImg = currentState.photoURL 
                 ? `<img src="${currentState.photoURL}" class="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-white/30 shadow-lg object-cover">`
                 : `<div class="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30 shadow-lg"><span class="text-3xl">👵</span></div>`;
 
-            // --- PRETEST BLOCK ---
             let pretestHtml = '';
             const pre = currentState.pretestData;
             
@@ -320,12 +369,10 @@
                 `;
             }
 
-            // --- POSTTEST BLOCK ---
             let posttestHtml = '';
             const post = currentState.posttestData;
 
             if (!ENABLE_POSTTEST) {
-                // Disabled
                 posttestHtml = `
                     <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left opacity-75">
                         <div class="flex justify-between items-center mb-2">
@@ -341,8 +388,6 @@
                     if (ENABLE_SHOW_ANSWER) {
                         btns += `<button onclick="reviewQuiz('posttest')" class="text-xs bg-white border border-blue-300 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
                     }
-                    // Posttest usually no retake, but can enable if needed
-                    // if (ENABLE_RETAKE) ...
 
                     posttestHtml = `
                         <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
@@ -384,7 +429,8 @@
                             <div class="relative z-10">
                                 ${profileImg}
                                 <h2 class="text-2xl font-bold tracking-wide">ยินดีต้อนรับ</h2>
-                                <p class="text-coffee-100 mt-1 font-light">${currentState.user}</p>
+                                <p class="text-coffee-100 mt-1 font-light mb-1">${currentState.realName || currentState.user}</p>
+                                <p class="text-coffee-200 text-xs font-light">ID: ${currentState.studentId || '-'}</p>
                             </div>
                         </div>
                         <div class="p-6">
@@ -407,11 +453,9 @@
             const currentAnswer = currentState.answers[currentState.currentQuestionIndex];
             const hasAnsweredCurrent = currentAnswer !== undefined; 
             
-            // Check review mode based on current quiz type
             const isReviewMode = (currentState.quizType === 'pretest' && currentState.pretestData.isDone) || 
                                  (currentState.quizType === 'posttest' && currentState.posttestData.isDone);
 
-            // Determine Header Title
             const typeLabel = currentState.quizType === 'pretest' ? 'Pre-test' : 'Post-test';
             const title = isReviewMode ? `เฉลย ${typeLabel}` : `แบบทดสอบ ${typeLabel}`;
 
@@ -517,7 +561,6 @@
         }
 
         function renderResult() {
-            // Determine result data based on current quizType
             let score = currentState.score;
             let typeLabel = currentState.quizType === 'pretest' ? 'Pre-test' : 'Post-test';
 
@@ -545,6 +588,7 @@
 
         function renderApp() {
             if (currentState.view === 'login') renderLogin();
+            else if (currentState.view === 'register') renderRegister(); // เพิ่ม View ใหม่
             else if (currentState.view === 'menu') renderMenu();
             else if (currentState.view === 'quiz') renderQuiz();
             else if (currentState.view === 'result') renderResult();
@@ -556,12 +600,8 @@
             currentState.currentQuestionIndex = 0; 
             currentState.answers = {}; 
             currentState.score = 0; 
-            
-            // ถ้าเป็นโหมดทำใหม่ ต้องรีเซ็ต isDone ของ type นั้นใน state ชั่วคราว (แต่ในฐานข้อมูลยังอยู่)
-            // เพื่อให้ renderQuiz แสดงโหมดทำข้อสอบ ไม่ใช่โหมดเฉลย
             if(type === 'pretest') currentState.pretestData.isDone = false;
             if(type === 'posttest') currentState.posttestData.isDone = false;
-            
             currentState.view = 'quiz'; 
             renderApp(); 
         };
@@ -569,15 +609,10 @@
         window.reviewQuiz = (type) => { 
             currentState.quizType = type;
             currentState.currentQuestionIndex = 0;
-            
-            // Load correct answers into state for review
             if(type === 'pretest') currentState.answers = currentState.pretestData.answers;
             if(type === 'posttest') currentState.answers = currentState.posttestData.answers;
-            
-            // Ensure done flag is true for rendering answer keys
             if(type === 'pretest') currentState.pretestData.isDone = true;
             if(type === 'posttest') currentState.posttestData.isDone = true;
-            
             currentState.view = 'quiz'; 
             renderApp(); 
         };
@@ -602,8 +637,6 @@
         };
         
         window.backToMenu = () => { 
-            // เมื่อกลับเมนู ให้ตั้ง flag isDone กลับคืนตามข้อมูลที่มี (เผื่อกรณีทำใหม่แล้วกด back)
-            // แต่จริงๆ ระบบ save จะทำงานเมื่อกดส่ง ดังนั้นถ้ากด back กลางคัน ค่าเก่าก็ยังอยู่
             currentState.view = 'menu'; 
             renderApp(); 
         };
@@ -616,7 +649,6 @@
             
             currentState.score = score;
             
-            // Update Local State
             if (currentState.quizType === 'pretest') {
                 currentState.pretestData = { isDone: true, score: score, answers: {...currentState.answers} };
             } else {
@@ -625,10 +657,13 @@
 
             renderLoading('กำลังบันทึกคะแนนลงระบบ...');
             
+            // ส่งข้อมูลชื่อจริง/รหัสนักศึกษาไปด้วย
             await saveUserData({ 
                 user: currentState.user, 
-                userId: currentState.userId, 
-                quizType: currentState.quizType, // ส่งประเภทข้อสอบ
+                userId: currentState.userId,
+                realName: currentState.realName,
+                studentId: currentState.studentId,
+                quizType: currentState.quizType,
                 score: score, 
                 total: examData.length, 
                 answers: currentState.answers 
@@ -638,7 +673,6 @@
             renderApp();
         };
 
-        // Check login state on load. If logged in, onAuthStateChanged handles it. If not, renderLogin shows.
         renderLogin();
 
     </script>
