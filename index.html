@@ -508,6 +508,24 @@
             const typeLabel = currentState.quizType === 'pretest' ? 'Pre-test' : 'Post-test';
             const title = isReviewMode ? `เฉลย ${typeLabel}` : `ข้อสอบ ${typeLabel}`;
 
+            // --- ส่วนที่เพิ่มเข้ามา: User Profile Badge ---
+            const profileImg = currentState.photoURL 
+                ? `<img src="${currentState.photoURL}" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover">`
+                : `<div class="w-10 h-10 rounded-full bg-nursing-100 flex items-center justify-center border-2 border-white shadow-sm text-nursing-600"><i data-lucide="user" class="w-5 h-5"></i></div>`;
+
+            const userProfileHtml = `
+                <div class="flex justify-end mb-4">
+                    <div class="flex items-center gap-3 bg-white/90 backdrop-blur-sm pl-4 pr-1 py-1 rounded-full shadow-sm border border-slate-100">
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-nursing-800 leading-tight">${currentState.realName || 'ผู้เข้าสอบ'}</p>
+                            <p class="text-[10px] text-slate-500 font-medium">ID: ${currentState.studentId || '-'}</p>
+                        </div>
+                        ${profileImg}
+                    </div>
+                </div>
+            `;
+            // ---------------------------------------------
+
             let optionsHtml = '';
             question.options.forEach((opt, idx) => {
                 const isSelected = currentAnswer === idx;
@@ -558,6 +576,9 @@
 
             app.innerHTML = `
                 <div class="w-full max-w-3xl flex flex-col min-h-screen sm:min-h-0 sm:h-auto fade-in">
+                    
+                    ${userProfileHtml}
+
                     <!-- Header Bar -->
                     <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <h2 class="text-lg font-bold text-nursing-800 flex items-center gap-2">
