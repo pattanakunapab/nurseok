@@ -20,7 +20,8 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // เพิ่ม import: setPersistence, browserSessionPersistence
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         // ==========================================
         //  ENVIRONMENT VARIABLES
@@ -44,18 +45,33 @@
 
         const appme = initializeApp(ENV.FIREBASE_CONFIG);
         const auth = getAuth(appme);
-        const provider = new GoogleAuthProvider();
         
-        // กำหนดภาษาของหน้า Login เป็นไทย
+        // --- SECURITY: ตั้งค่าให้ล็อกอินหลุดทันทีเมื่อปิดแท็บ/เบราว์เซอร์ ---
+        setPersistence(auth, browserSessionPersistence)
+            .then(() => {
+                // Persistence set to session successfully
+                console.log("Session persistence enabled");
+            })
+            .catch((error) => {
+                console.error("Auth Persistence Error:", error);
+            });
+
+        const provider = new GoogleAuthProvider();
         auth.languageCode = 'th'; 
 
         // --- Global Auth Functions ---
         window.loginWithGoogle = () => {
+            // [TEST MODE] บังคับให้ถามสิทธิ์ (Consent) และเลือกบัญชีใหม่ทุกครั้ง
+            // ลบบรรทัดนี้ออกเมื่อทดสอบเสร็จ หากต้องการให้จำสิทธิ์เดิม
+            provider.setCustomParameters({
+                prompt: 'select_account consent'
+            });
+
+            // การเรียก signInWithPopup จะใช้ค่า Persistence ที่ตั้งไว้ข้างบน
             signInWithPopup(auth, provider)
                 .catch((error) => {
                     console.error("Login Error:", error);
                     
-                    // ป้องกันการแจ้งเตือน Error กรณีผู้ใช้กดปิด Popup เอง หรือกดซ้ำ (Cancelled Request)
                     if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
                         return; 
                     }
