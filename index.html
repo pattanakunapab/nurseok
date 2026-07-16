@@ -37,9 +37,15 @@
             },
             API_URL: "https://script.google.com/macros/s/AKfycbw4fzLQU5TTF8xhByG0bvsW_TFoP7dRIxwrLy_JfAnM0t6DUINUxEThvls2iB91TXzAUA/exec",
             EXAM_SETTINGS: {
-                ENABLE_POSTTEST: true,    
-                ENABLE_SHOW_ANSWER: false,  
-                ENABLE_RETAKE: false        
+                ENABLE_POSTTEST: true,
+                PRETEST: {
+                    ENABLE_SHOW_ANSWER: false,  
+                    ENABLE_RETAKE: false        
+                },
+                POSTTEST: {
+                    ENABLE_SHOW_ANSWER: true,  
+                    ENABLE_RETAKE: false        
+                }
             }
         };
 
@@ -209,7 +215,7 @@
 
         // --- API Functions ---
         function getApiUrl() { return window.APP_ENV ? window.APP_ENV.API_URL : ""; }
-        function getExamSettings() { return window.APP_ENV ? window.APP_ENV.EXAM_SETTINGS : { ENABLE_POSTTEST: false, ENABLE_SHOW_ANSWER: true, ENABLE_RETAKE: true }; }
+        function getExamSettings() { return window.APP_ENV ? window.APP_ENV.EXAM_SETTINGS : { ENABLE_POSTTEST: false, PRETEST: { ENABLE_SHOW_ANSWER: true, ENABLE_RETAKE: true }, POSTTEST: { ENABLE_SHOW_ANSWER: true, ENABLE_RETAKE: true } }; }
 
         async function checkUserStatus(email) {
             const url = getApiUrl();
@@ -362,10 +368,10 @@
             
             if (pre.isDone) {
                 let btns = '';
-                if (SETTINGS.ENABLE_SHOW_ANSWER) {
+                if (SETTINGS.PRETEST?.ENABLE_SHOW_ANSWER) {
                     btns += `<button onclick="reviewQuiz('pretest')" class="text-xs bg-white border border-slate-200 text-nursing-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1 transition"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
                 }
-                if (SETTINGS.ENABLE_RETAKE) {
+                if (SETTINGS.PRETEST?.ENABLE_RETAKE) {
                     btns += `<button onclick="startQuiz('pretest')" class="text-xs bg-nursing-50 text-nursing-700 border border-nursing-200 px-3 py-2 rounded shadow-sm hover:bg-nursing-100 flex items-center gap-1 transition"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> สอบแก้ตัว</button>`;
                 }
 
@@ -421,8 +427,11 @@
             } else {
                 if (post.isDone) {
                     let btns = '';
-                    if (SETTINGS.ENABLE_SHOW_ANSWER) {
+                    if (SETTINGS.POSTTEST?.ENABLE_SHOW_ANSWER) {
                         btns += `<button onclick="reviewQuiz('posttest')" class="text-xs bg-white border border-slate-200 text-nursing-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1 transition"><i data-lucide="eye" class="w-3 h-3"></i> ดูเฉลย</button>`;
+                    }
+                    if (SETTINGS.POSTTEST?.ENABLE_RETAKE) {
+                        btns += `<button onclick="startQuiz('posttest')" class="text-xs bg-nursing-50 text-nursing-700 border border-nursing-200 px-3 py-2 rounded shadow-sm hover:bg-nursing-100 flex items-center gap-1 transition"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> สอบแก้ตัว</button>`;
                     }
 
                     posttestHtml = `
